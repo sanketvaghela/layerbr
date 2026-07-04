@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>layerbr: OSI & TCP/IP Trainer</title>
+    <!-- Tailwind CSS for modern, responsive dark theme styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom styles for animations and specific UI states */
+      body {
+        background-color: #09090b; /* Zinc 950 */
+        color: #fafafa; /* Zinc 50 */
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        overflow: hidden; /* Prevent scrolling during gameplay */
+        transition: background-color 0.4s ease;
+      }
+
+      strong {
+        font-weight: 500;
+        color: #ffffff;
+      }
+
+      /* Flash animations for correct/incorrect answers */
+      @keyframes flashCorrect {
+        0% {
+          background-color: #09090b;
+        }
+        50% {
+          background-color: #052e16;
+        } /* Green 950 */
+        100% {
+          background-color: #09090b;
+        }
+      }
+
+      @keyframes flashIncorrect {
+        0% {
+          background-color: #09090b;
+        }
+        50% {
+          background-color: #450a0a;
+        } /* Red 950 */
+        100% {
+          background-color: #09090b;
+        }
+      }
+
+      .flash-green {
+        animation: flashCorrect 0.6s ease-out;
+      }
+
+      .flash-red {
+        animation: flashIncorrect 0.6s ease-out;
+      }
+
+      /* Option cards styling */
+      .option-card {
+        transition: all 0.15s ease;
+        position: relative;
+      }
+
+      /* Visual feedback on the selected option */
+      .option-correct {
+        background-color: #166534 !important; /* Green 800 */
+        color: #fff !important;
+        transform: scale(1.01);
+        border-color: #22c55e !important;
+      }
+
+      .option-incorrect {
+        background-color: #991b1b !important; /* Red 800 */
+        color: #fff !important;
+        transform: scale(0.99);
+        border-color: #ef4444 !important;
+      }
+
+      /* Keyboard hint badge */
+      .key-badge {
+        position: absolute;
+        top: 50%;
+        left: 1rem;
+        transform: translateY(-50%);
+      }
+
+      .stat-value {
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body
+    class="h-screen w-screen flex flex-col antialiased selection:bg-zinc-800 text-zinc-400 tracking-wide"
+    id="game-body"
+  >
+    <!-- Intro Screen -->
+    <div
+      id="intro-screen"
+      class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950 px-6 text-center"
+    >
+      <img
+        src="https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif"
+        alt="Networking Tech"
+        class="w-48 h-48 md:w-64 md:h-64 object-cover rounded-xl mb-6 md:mb-8 border border-zinc-800 shadow-2xl opacity-90 pointer-events-none"
+      />
+      <h1
+        class="text-3xl md:text-5xl font-bold text-zinc-100 mb-4 tracking-tight drop-shadow-sm"
+      >
+        layerbr
+      </h1>
+      <p class="text-lg md:text-xl text-zinc-300 mb-2 max-w-lg font-medium">
+        Struggling with TCP/IP and OSI layer name recalling?
+      </p>
+      <p class="text-sm md:text-base text-zinc-500 mb-8 md:mb-10 max-w-md">
+        Use this interactive trainer to memorize them. Practice daily to build
+        unbreakable muscle memory.
+      </p>
+      <button
+        onclick="startGame()"
+        class="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow-[0_0_15px_rgba(5,150,105,0.4)] hover:shadow-[0_0_25px_rgba(5,150,105,0.6)] transition-all active:scale-95 text-lg cursor-pointer"
+      >
+        Start Training
+      </button>
+    </div>
+
+    <!-- Top Navigation / Header -->
+    <header
+      id="game-header"
+      class="hidden px-6 py-4 border-b border-zinc-900 bg-zinc-950 justify-between items-center z-10"
+    >
+      <div>
+        <h1
+          class="text-sm font-semibold tracking-wider text-zinc-200 uppercase"
+        >
+          layerbr
+        </h1>
+        <p class="text-[10px] text-zinc-500 uppercase tracking-widest mt-0.5">
+          OSI & TCP/IP Training
+        </p>
+      </div>
+      <div class="flex gap-4 text-xs text-zinc-500 font-mono">
+        <div class="flex items-center gap-1.5 hidden sm:flex">
+          <kbd
+            class="bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800 text-zinc-400"
+            >1-4</kbd
+          >
+          Answer
+        </div>
+        <button
+          onclick="skipQuestion()"
+          class="flex items-center gap-1.5 hover:text-zinc-300 transition-colors active:scale-95 cursor-pointer"
+        >
+          <kbd
+            class="bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800 text-zinc-400"
+            >Esc</kbd
+          >
+          Skip
+        </button>
+        <button
+          onclick="initGame()"
+          class="flex items-center gap-1.5 hover:text-zinc-300 transition-colors active:scale-95 cursor-pointer"
+        >
+          <kbd
+            class="bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800 text-zinc-400"
+            >R</kbd
+          >
+          Restart
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Game Area -->
+    <main
+      id="game-main"
+      class="hidden flex-1 flex-col md:flex-row overflow-hidden bg-zinc-950"
+    >
+      <!-- Left Sidebar: Statistics -->
+      <aside
+        class="w-full md:w-64 border-t md:border-t-0 md:border-r border-zinc-900 p-4 md:p-6 flex flex-col gap-4 md:gap-6 overflow-y-auto order-last md:order-first h-[35vh] md:h-auto shrink-0"
+      >
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-zinc-900/40 p-3 rounded-lg border border-zinc-800/50">
+            <div
+              class="text-[10px] text-zinc-500 uppercase tracking-widest mb-1"
+            >
+              Correct
+            </div>
+            <div
+              class="text-base font-medium text-emerald-500 stat-value"
+              id="stat-correct"
+            >
+              0
+            </div>
+          </div>
+          <div class="bg-zinc-900/40 p-3 rounded-lg border border-zinc-800/50">
+            <div
+              class="text-[10px] text-zinc-500 uppercase tracking-widest mb-1"
+            >
+              Incorrect
+            </div>
+            <div
+              class="text-base font-medium text-rose-500 stat-value"
+              id="stat-incorrect"
+            >
+              0
+            </div>
+          </div>
+          <div
+            class="bg-zinc-900/40 p-3 rounded-lg border border-zinc-800/50 col-span-2 flex justify-between items-end"
+          >
+            <div
+              class="text-[10px] text-zinc-500 uppercase tracking-widest mb-1"
+            >
+              Accuracy
+            </div>
+            <div
+              class="text-lg font-medium text-zinc-200 stat-value"
+              id="stat-accuracy"
+            >
+              0%
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div
+            class="flex justify-between items-center py-1 border-b border-zinc-900/50"
+          >
+            <span class="text-xs text-zinc-500">Current Time</span>
+            <span
+              class="font-mono text-xs text-zinc-300 stat-value"
+              id="stat-current-time"
+              >0.00s</span
+            >
+          </div>
+          <div
+            class="flex justify-between items-center py-1 border-b border-zinc-900/50"
+          >
+            <span class="text-xs text-zinc-500">Avg Time</span>
+            <span
+              class="font-mono text-xs text-zinc-300 stat-value"
+              id="stat-avg-time"
+              >--</span
+            >
+          </div>
+          <div
+            class="flex justify-between items-center py-1 border-b border-zinc-900/50"
+          >
+            <span class="text-xs text-zinc-500">Fastest</span>
+            <span
+              class="font-mono text-xs text-emerald-500/80 stat-value"
+              id="stat-fastest"
+              >--</span
+            >
+          </div>
+          <div
+            class="flex justify-between items-center py-1 border-b border-zinc-900/50"
+          >
+            <span class="text-xs text-zinc-500">Slowest</span>
+            <span
+              class="font-mono text-xs text-rose-500/80 stat-value"
+              id="stat-slowest"
+              >--</span
+            >
+          </div>
+          <div class="flex justify-between items-center py-1 mt-4">
+            <span class="text-xs text-zinc-500">Current Streak</span>
+            <span
+              class="font-medium text-xs text-zinc-300 stat-value"
+              id="stat-streak"
+              >0</span
+            >
+          </div>
+          <div class="flex justify-between items-center py-1">
+            <span class="text-xs text-zinc-500">Best Streak</span>
+            <span
+              class="font-medium text-xs text-amber-500/80 stat-value"
+              id="stat-best-streak"
+              >0</span
+            >
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center: Question and Options Area -->
+      <section
+        class="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-y-auto"
+      >
+        <!-- Live timer indicator -->
+        <div
+          class="absolute top-4 sm:top-6 text-xs font-mono text-zinc-600 tracking-wider"
+          id="live-timer"
+        >
+          0.00s
+        </div>
+
+        <!-- Question Display -->
+        <div class="text-center mb-6 sm:mb-10 max-w-2xl mt-8 sm:mt-0">
+          <h2
+            id="question-text"
+            class="text-lg sm:text-xl md:text-2xl font-light leading-relaxed text-zinc-200"
+          >
+            Loading question...
+          </h2>
+        </div>
+
+        <!-- Options Grid -->
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-3xl pb-8"
+          id="options-container"
+        >
+          <!-- Options injected via JS -->
+        </div>
+      </section>
+    </main>
+
+    <script>
+      /**
+       * KNOWLEDGE BASE
+       * Defining the OSI and TCP/IP structures to generate accurate questions.
+       */
+      const osiLayers = [
+        {
+          num: 1,
+          name: "Physical",
+          pdus: ["Bits"],
+          devices: ["Hub", "Repeater", "Modem", "Cables"],
+          protocols: ["10Base-T", "DSL", "ISDN"],
+        },
+        {
+          num: 2,
+          name: "Data Link",
+          pdus: ["Frames"],
+          devices: ["Switch", "Bridge", "NIC"],
+          protocols: ["Ethernet", "MAC", "ARP", "VLAN", "PPP"],
+        },
+        {
+          num: 3,
+          name: "Network",
+          pdus: ["Packets", "Datagrams"],
+          devices: ["Router", "Layer 3 Switch"],
+          protocols: ["IP", "ICMP", "IPsec", "OSPF", "BGP"],
+        },
+        {
+          num: 4,
+          name: "Transport",
+          pdus: ["Segments", "Datagrams"],
+          devices: ["Firewall", "Load Balancer"],
+          protocols: ["TCP", "UDP"],
+        },
+        {
+          num: 5,
+          name: "Session",
+          pdus: ["Data"],
+          devices: [],
+          protocols: ["NetBIOS", "RPC", "PPTP", "L2TP"],
+        },
+        {
+          num: 6,
+          name: "Presentation",
+          pdus: ["Data"],
+          devices: [],
+          protocols: ["SSL/TLS", "JPEG", "ASCII", "MPEG", "Encryption"],
+        },
+        {
+          num: 7,
+          name: "Application",
+          pdus: ["Data"],
+          devices: ["Gateway"],
+          protocols: ["HTTP", "HTTPS", "FTP", "DNS", "SMTP", "SSH"],
+        },
+      ];
+
+      // Standard 4-layer TCP/IP Model (DoD Model)
+      const tcpLayers = [
+        { num: 1, name: "Network Access" },
+        { num: 2, name: "Internet" },
+        { num: 3, name: "Transport" },
+        { num: 4, name: "Application" },
+      ];
+
+      // Mappings for OSI <-> TCP/IP
+      const mappings = {
+        osiToTcp: {
+          1: [1],
+          2: [1],
+          3: [2],
+          4: [3],
+          5: [4],
+          6: [4],
+          7: [4],
+        },
+        tcpToOsi: {
+          1: [1, 2],
+          2: [3],
+          3: [4],
+          4: [5, 6, 7],
+        },
+      };
+
+      /**
+       * GAME STATE & STATS
+       */
+      let state = {
+        acceptingInput: false,
+        currentCorrectIndex: null, // 0-3 (representing keys 1-4)
+        questionStartTime: 0,
+        liveTimerInterval: null,
+        availableQuestionTypes: [], // Keeps track of unasked question types
+        isIntroScreen: true,
+      };
+
+      let stats = {
+        correct: 0,
+        incorrect: 0,
+        responseTimes: [], // in milliseconds
+        currentStreak: 0,
+        bestStreak: 0,
+      };
+
+      /**
+       * UTILITY FUNCTIONS
+       */
+      // Get a random integer between min and max (inclusive)
+      const getRandomInt = (min, max) =>
+        Math.floor(Math.random() * (max - min + 1)) + min;
+
+      // Pick a random element from an array
+      const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+      // Shuffle array in place (Fisher-Yates)
+      const shuffleArray = (array) => {
+        let currentIndex = array.length,
+          randomIndex;
+        while (currentIndex !== 0) {
+          randomIndex = Math.floor(Math.random() * currentIndex);
+          currentIndex--;
+          [array[currentIndex], array[randomIndex]] = [
+            array[randomIndex],
+            array[currentIndex],
+          ];
+        }
+        return array;
+      };
+
+      /**
+       * QUESTION GENERATORS
+       */
+
+      // Generates wrong options ensuring no duplicates and avoiding the correct answer
+      const getDistractors = (
+        pool,
+        correctValue,
+        count = 3,
+        formatFn = (x) => x,
+      ) => {
+        let distractors = new Set();
+        while (distractors.size < count) {
+          let randomItem = pickRandom(pool);
+          let formatted = formatFn(randomItem);
+          if (formatted !== correctValue) {
+            distractors.add(formatted);
+          }
+        }
+        return Array.from(distractors);
+      };
+
+      const questionTypes = [
+        // 1. OSI Name -> Number
+        () => {
+          const layer = pickRandom(osiLayers);
+          const qText = `Which layer number is the OSI <strong>${layer.name}</strong> layer?`;
+          const ans = `Layer ${layer.num}`;
+          const distractors = getDistractors(
+            osiLayers,
+            ans,
+            3,
+            (l) => `Layer ${l.num}`,
+          );
+          return { qText, ans, distractors };
+        },
+        // 2. OSI Number -> Name
+        () => {
+          const layer = pickRandom(osiLayers);
+          const qText = `What is the name of <strong>OSI Layer ${layer.num}</strong>?`;
+          const ans = layer.name;
+          const distractors = getDistractors(osiLayers, ans, 3, (l) => l.name);
+          return { qText, ans, distractors };
+        },
+        // 3. TCP/IP Name -> Number
+        () => {
+          const layer = pickRandom(tcpLayers);
+          const qText = `Which layer number is the TCP/IP <strong>${layer.name}</strong> layer?`;
+          const ans = `Layer ${layer.num}`;
+          const distractors = getDistractors(
+            tcpLayers,
+            ans,
+            3,
+            (l) => `Layer ${l.num}`,
+          );
+          return { qText, ans, distractors };
+        },
+        // 4. TCP/IP Number -> Name
+        () => {
+          const layer = pickRandom(tcpLayers);
+          const qText = `What is the name of <strong>TCP/IP Layer ${layer.num}</strong>?`;
+          const ans = layer.name;
+          const distractors = getDistractors(tcpLayers, ans, 3, (l) => l.name);
+          return { qText, ans, distractors };
+        },
+        // 5. OSI -> TCP/IP Mapping
+        () => {
+          const osiLayer = pickRandom(osiLayers);
+          const tcpNumMatch = mappings.osiToTcp[osiLayer.num][0];
+          const tcpMatch = tcpLayers.find((l) => l.num === tcpNumMatch);
+
+          const qText = `Which TCP/IP layer corresponds to the OSI <strong>${osiLayer.name}</strong> layer?`;
+          const ans = tcpMatch.name;
+          const distractors = getDistractors(tcpLayers, ans, 3, (l) => l.name);
+          return { qText, ans, distractors };
+        },
+        // 6. TCP/IP -> OSI Mapping
+        () => {
+          const tcpLayer = pickRandom(tcpLayers);
+          const possibleOsiNums = mappings.tcpToOsi[tcpLayer.num];
+          const targetOsiNum = pickRandom(possibleOsiNums);
+          const osiMatch = osiLayers.find((l) => l.num === targetOsiNum);
+
+          const qText = `Which OSI layer falls within the TCP/IP <strong>${tcpLayer.name}</strong> layer?`;
+          const ans = osiMatch.name;
+          // Distractors must NOT be any valid mapping for this TCP/IP layer
+          let distractors = new Set();
+          while (distractors.size < 3) {
+            let randOsi = pickRandom(osiLayers);
+            if (!possibleOsiNums.includes(randOsi.num)) {
+              distractors.add(randOsi.name);
+            }
+          }
+          return { qText, ans, distractors: Array.from(distractors) };
+        },
+        // 7. Protocol -> OSI Name
+        () => {
+          const layersWithProtos = osiLayers.filter(
+            (l) => l.protocols && l.protocols.length > 0,
+          );
+          const layer = pickRandom(layersWithProtos);
+          const proto = pickRandom(layer.protocols);
+          const qText = `At which OSI layer does the <strong>${proto}</strong> protocol operate?`;
+          const ans = layer.name;
+          const distractors = getDistractors(osiLayers, ans, 3, (l) => l.name);
+          return { qText, ans, distractors };
+        },
+        // 8. Device -> OSI Name
+        () => {
+          const layersWithDevices = osiLayers.filter(
+            (l) => l.devices && l.devices.length > 0,
+          );
+          const layer = pickRandom(layersWithDevices);
+          const device = pickRandom(layer.devices);
+          const qText = `Which OSI layer is primarily associated with a <strong>${device}</strong>?`;
+          const ans = layer.name;
+          const distractors = getDistractors(osiLayers, ans, 3, (l) => l.name);
+          return { qText, ans, distractors };
+        },
+        // 9. PDU -> OSI Name
+        () => {
+          const layer = pickRandom(osiLayers);
+          const pdu = pickRandom(layer.pdus);
+          const qText = `Which OSI layer uses <strong>${pdu}</strong> as its Protocol Data Unit (PDU)?`;
+          const ans = layer.name;
+
+          // Distractors must not share the exact same PDU name (e.g., "Data" is shared by L5, L6, L7)
+          let distractors = new Set();
+          while (distractors.size < 3) {
+            let randLayer = pickRandom(osiLayers);
+            if (!randLayer.pdus.includes(pdu) && randLayer.name !== ans) {
+              distractors.add(randLayer.name);
+            }
+          }
+          return { qText, ans, distractors: Array.from(distractors) };
+        },
+        // 10. Protocol -> TCP/IP Name
+        () => {
+          const layersWithProtos = osiLayers.filter(
+            (l) => l.protocols && l.protocols.length > 0,
+          );
+          const osiLayer = pickRandom(layersWithProtos);
+          const proto = pickRandom(osiLayer.protocols);
+
+          const tcpNumMatch = mappings.osiToTcp[osiLayer.num][0];
+          const tcpMatch = tcpLayers.find((l) => l.num === tcpNumMatch);
+
+          const qText = `At which TCP/IP layer does the <strong>${proto}</strong> protocol operate?`;
+          const ans = tcpMatch.name;
+          const distractors = getDistractors(tcpLayers, ans, 3, (l) => l.name);
+          return { qText, ans, distractors };
+        },
+        // 11. OSI Number -> TCP/IP Number
+        () => {
+          const osi = pickRandom(osiLayers);
+          const tcpNum = mappings.osiToTcp[osi.num][0];
+          const qText = `Which TCP/IP layer number corresponds to <strong>OSI Layer ${osi.num}</strong>?`;
+          const ans = `Layer ${tcpNum}`;
+          const distractors = getDistractors(
+            tcpLayers,
+            ans,
+            3,
+            (l) => `Layer ${l.num}`,
+          );
+          return { qText, ans, distractors };
+        },
+        // 12. OSI Number -> TCP/IP Name
+        () => {
+          const osi = pickRandom(osiLayers);
+          const tcpNum = mappings.osiToTcp[osi.num][0];
+          const tcp = tcpLayers.find((l) => l.num === tcpNum);
+          const qText = `Which TCP/IP layer corresponds to <strong>OSI Layer ${osi.num}</strong>?`;
+          const ans = tcp.name;
+          const distractors = getDistractors(tcpLayers, ans, 3, (l) => l.name);
+          return { qText, ans, distractors };
+        },
+        // 13. TCP/IP Number -> OSI Number
+        () => {
+          const tcp = pickRandom(tcpLayers);
+          const osiNums = mappings.tcpToOsi[tcp.num];
+          const targetOsiNum = pickRandom(osiNums);
+          const qText = `Which OSI layer number falls within <strong>TCP/IP Layer ${tcp.num}</strong>?`;
+          const ans = `Layer ${targetOsiNum}`;
+
+          let distractors = new Set();
+          while (distractors.size < 3) {
+            let randOsi = pickRandom(osiLayers);
+            if (!osiNums.includes(randOsi.num)) {
+              distractors.add(`Layer ${randOsi.num}`);
+            }
+          }
+          return { qText, ans, distractors: Array.from(distractors) };
+        },
+        // 14. TCP/IP Number -> OSI Name
+        () => {
+          const tcp = pickRandom(tcpLayers);
+          const osiNums = mappings.tcpToOsi[tcp.num];
+          const targetOsiNum = pickRandom(osiNums);
+          const osi = osiLayers.find((l) => l.num === targetOsiNum);
+          const qText = `Which OSI layer falls within <strong>TCP/IP Layer ${tcp.num}</strong>?`;
+          const ans = osi.name;
+
+          let distractors = new Set();
+          while (distractors.size < 3) {
+            let randOsi = pickRandom(osiLayers);
+            if (!osiNums.includes(randOsi.num)) {
+              distractors.add(randOsi.name);
+            }
+          }
+          return { qText, ans, distractors: Array.from(distractors) };
+        },
+        // 15. OSI Name -> TCP/IP Number
+        () => {
+          const osi = pickRandom(osiLayers);
+          const tcpNum = mappings.osiToTcp[osi.num][0];
+          const qText = `Which TCP/IP layer number corresponds to the OSI <strong>${osi.name}</strong> layer?`;
+          const ans = `Layer ${tcpNum}`;
+          const distractors = getDistractors(
+            tcpLayers,
+            ans,
+            3,
+            (l) => `Layer ${l.num}`,
+          );
+          return { qText, ans, distractors };
+        },
+        // 16. TCP/IP Name -> OSI Number
+        () => {
+          const tcp = pickRandom(tcpLayers);
+          const osiNums = mappings.tcpToOsi[tcp.num];
+          const targetOsiNum = pickRandom(osiNums);
+          const qText = `Which OSI layer number falls within the TCP/IP <strong>${tcp.name}</strong> layer?`;
+          const ans = `Layer ${targetOsiNum}`;
+
+          let distractors = new Set();
+          while (distractors.size < 3) {
+            let randOsi = pickRandom(osiLayers);
+            if (!osiNums.includes(randOsi.num)) {
+              distractors.add(`Layer ${randOsi.num}`);
+            }
+          }
+          return { qText, ans, distractors: Array.from(distractors) };
+        },
+      ];
+
+      // Ensure all question types get asked equally
+      function getNextQuestionType() {
+        if (state.availableQuestionTypes.length === 0) {
+          // Refill the pool with all available question generators and shuffle them
+          state.availableQuestionTypes = [...questionTypes];
+          shuffleArray(state.availableQuestionTypes);
+        }
+        // Pop an item off the shuffled array
+        return state.availableQuestionTypes.pop();
+      }
+
+      /**
+       * CORE GAME LOGIC
+       */
+
+      function initGame() {
+        state.availableQuestionTypes = []; // Reset the question pool
+        stats = {
+          correct: 0,
+          incorrect: 0,
+          responseTimes: [],
+          currentStreak: 0,
+          bestStreak: 0,
+        };
+        updateStatsUI();
+        nextQuestion();
+      }
+
+      function nextQuestion() {
+        // Reset UI states
+        clearInterval(state.liveTimerInterval);
+        document.getElementById("live-timer").innerText = "0.00s";
+        document
+          .getElementById("live-timer")
+          .classList.remove("text-emerald-500", "text-rose-500");
+        document.getElementById("live-timer").classList.add("text-zinc-600");
+
+        // Fetch the next question generator evenly
+        const generator = getNextQuestionType();
+        const qData = generator();
+
+        // Combine correct answer with distractors and shuffle
+        let options = [...qData.distractors, qData.ans];
+        shuffleArray(options);
+
+        // Find where the correct answer landed
+        state.currentCorrectIndex = options.indexOf(qData.ans);
+
+        // Render
+        document.getElementById("question-text").innerHTML = qData.qText;
+
+        const optionsContainer = document.getElementById("options-container");
+        optionsContainer.innerHTML = "";
+
+        options.forEach((optText, index) => {
+          const keyNum = index + 1;
+          const btn = document.createElement("div");
+          btn.id = `option-${index}`;
+          btn.onclick = () => handleAnswer(index); // Added touch/click support
+          btn.className = `option-card active:scale-[0.98] active:bg-zinc-800/60 touch-manipulation bg-zinc-900/30 border border-zinc-800/60 hover:bg-zinc-800/40 rounded-lg p-4 text-left text-sm text-zinc-300 cursor-pointer flex items-center min-h-[64px]`;
+          btn.innerHTML = `
+                    <div class="key-badge text-zinc-500 text-[10px] font-mono border border-zinc-700/50 bg-zinc-800/30 px-1.5 py-0.5 rounded">${keyNum}</div>
+                    <span class="pl-12 font-medium">${optText}</span>
+                `;
+          optionsContainer.appendChild(btn);
+        });
+
+        // Start Timing & Allow input
+        state.questionStartTime = performance.now();
+        state.acceptingInput = true;
+
+        state.liveTimerInterval = setInterval(() => {
+          const elapsed = (performance.now() - state.questionStartTime) / 1000;
+          document.getElementById("live-timer").innerText =
+            elapsed.toFixed(2) + "s";
+        }, 50);
+      }
+
+      function handleAnswer(selectedIndex) {
+        if (!state.acceptingInput) return;
+        state.acceptingInput = false; // Lock input immediately
+
+        const endTime = performance.now();
+        const responseTime = endTime - state.questionStartTime;
+        clearInterval(state.liveTimerInterval);
+
+        document.getElementById("live-timer").innerText =
+          (responseTime / 1000).toFixed(2) + "s";
+
+        const isCorrect = selectedIndex === state.currentCorrectIndex;
+
+        // UI Feedback
+        const selectedElem = document.getElementById(`option-${selectedIndex}`);
+        const correctElem = document.getElementById(
+          `option-${state.currentCorrectIndex}`,
+        );
+        const body = document.getElementById("game-body");
+        const timerDisplay = document.getElementById("live-timer");
+
+        // Reset animation by triggering reflow
+        body.classList.remove("flash-green", "flash-red");
+        void body.offsetWidth;
+
+        if (isCorrect) {
+          selectedElem.classList.add("option-correct");
+          body.classList.add("flash-green");
+          timerDisplay.classList.replace("text-zinc-600", "text-emerald-500");
+        } else {
+          selectedElem.classList.add("option-incorrect");
+          correctElem.classList.add("option-correct"); // Reveal right answer
+          body.classList.add("flash-red");
+          timerDisplay.classList.replace("text-zinc-600", "text-rose-500");
+        }
+
+        // Update Stats
+        updateStatsData(isCorrect, responseTime);
+        updateStatsUI();
+
+        // Next question delay
+        setTimeout(() => {
+          nextQuestion();
+        }, 1200); // Wait 1.2s before next question
+      }
+
+      function skipQuestion() {
+        if (!state.acceptingInput) return;
+        state.acceptingInput = false;
+        clearInterval(state.liveTimerInterval);
+
+        // Reset state slightly
+        stats.currentStreak = 0;
+        updateStatsUI();
+
+        // Briefly show correct answer
+        const correctElem = document.getElementById(
+          `option-${state.currentCorrectIndex}`,
+        );
+        correctElem.classList.add("option-correct");
+
+        setTimeout(() => {
+          nextQuestion();
+        }, 800);
+      }
+
+      /**
+       * STATISTICS MANAGEMENT
+       */
+
+      function updateStatsData(isCorrect, responseTimeMs) {
+        if (isCorrect) {
+          stats.correct++;
+          stats.currentStreak++;
+          if (stats.currentStreak > stats.bestStreak) {
+            stats.bestStreak = stats.currentStreak;
+          }
+        } else {
+          stats.incorrect++;
+          stats.currentStreak = 0;
+        }
+        stats.responseTimes.push(responseTimeMs);
+      }
+
+      function updateStatsUI() {
+        document.getElementById("stat-correct").innerText = stats.correct;
+        document.getElementById("stat-incorrect").innerText = stats.incorrect;
+
+        const total = stats.correct + stats.incorrect;
+        const accuracy =
+          total === 0 ? 0 : Math.round((stats.correct / total) * 100);
+        document.getElementById("stat-accuracy").innerText = `${accuracy}%`;
+
+        document.getElementById("stat-streak").innerText = stats.currentStreak;
+        document.getElementById("stat-best-streak").innerText =
+          stats.bestStreak;
+
+        if (stats.responseTimes.length > 0) {
+          const current = stats.responseTimes[stats.responseTimes.length - 1];
+          const avg =
+            stats.responseTimes.reduce((a, b) => a + b, 0) /
+            stats.responseTimes.length;
+          const min = Math.min(...stats.responseTimes);
+          const max = Math.max(...stats.responseTimes);
+
+          document.getElementById("stat-current-time").innerText =
+            (current / 1000).toFixed(2) + "s";
+          document.getElementById("stat-avg-time").innerText =
+            (avg / 1000).toFixed(2) + "s";
+          document.getElementById("stat-fastest").innerText =
+            (min / 1000).toFixed(2) + "s";
+          document.getElementById("stat-slowest").innerText =
+            (max / 1000).toFixed(2) + "s";
+        } else {
+          document.getElementById("stat-current-time").innerText = "0.00s";
+          document.getElementById("stat-avg-time").innerText = "--";
+          document.getElementById("stat-fastest").innerText = "--";
+          document.getElementById("stat-slowest").innerText = "--";
+        }
+      }
+
+      /**
+       * EVENT LISTENERS
+       */
+      window.addEventListener("keydown", (e) => {
+        // Handle Start Screen Shortcuts
+        if (state.isIntroScreen) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            startGame();
+          }
+          return; // Ignore other keys while intro is visible
+        }
+
+        const key = e.key.toLowerCase();
+
+        // Check for answers (1, 2, 3, 4)
+        if (["1", "2", "3", "4"].includes(key)) {
+          // Prevent default behavior to stop accidental scrolling or searching
+          e.preventDefault();
+          // Map '1'->0, '2'->1, etc.
+          const selectedIndex = parseInt(key) - 1;
+          handleAnswer(selectedIndex);
+        }
+        // Check for Reset
+        else if (key === "r") {
+          e.preventDefault();
+          initGame();
+        }
+        // Check for Skip
+        else if (key === "escape") {
+          e.preventDefault();
+          skipQuestion();
+        }
+      });
+
+      // Start button logic to transition from intro to game
+      function startGame() {
+        state.isIntroScreen = false;
+
+        // Hide intro screen
+        const introScreen = document.getElementById("intro-screen");
+        introScreen.classList.add("hidden");
+        introScreen.classList.remove("flex");
+
+        // Show header and main game area
+        const header = document.getElementById("game-header");
+        header.classList.remove("hidden");
+        header.classList.add("flex");
+
+        const main = document.getElementById("game-main");
+        main.classList.remove("hidden");
+        main.classList.add("flex");
+
+        initGame();
+      }
+    </script>
+  </body>
+</html>
