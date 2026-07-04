@@ -1,5 +1,7 @@
 # layerbr 🧅
 
+[![Deploy static content to Pages](https://github.com/sanketvaghela/layerbr/actions/workflows/static.yml/badge.svg)](https://github.com/sanketvaghela/layerbr/actions/workflows/static.yml)
+
 Like keybr, but for torturing yourself with the OSI and TCP/IP models.
 
 Are you studying for your CCNA, CompTIA Network+, or just trying to survive a whiteboard interview with a grumpy sysadmin? Do you find yourself muttering "Please Do Not Throw Sausage Pizza Away" in your sleep, only to wake up in a cold sweat because you forgot which layer IPsec lives on?
