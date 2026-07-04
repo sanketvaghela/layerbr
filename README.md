@@ -2,6 +2,8 @@
 
 [![Deploy static content to Pages](https://github.com/sanketvaghela/layerbr/actions/workflows/static.yml/badge.svg)](https://github.com/sanketvaghela/layerbr/actions/workflows/static.yml)
 
+**🎮 [Play Now!](https://sanketvaghela.github.io/layerbr/)**
+
 Like keybr, but for torturing yourself with the OSI and TCP/IP models.
 
 Are you studying for your CCNA, CompTIA Network+, or just trying to survive a whiteboard interview with a grumpy sysadmin? Do you find yourself muttering "Please Do Not Throw Sausage Pizza Away" in your sleep, only to wake up in a cold sweat because you forgot which layer IPsec lives on?
@@ -17,6 +19,9 @@ Welcome to layerbr. It's a rapid-fire, muscle-memory trainer that drills network
 
 ## 🚀 How to Play
 
+**👉 [Play layerbr online right here!](https://sanketvaghela.github.io/layerbr/) 👈**
+
+Or to run it locally:
 1. Clone this repo (or literally just double-click the file).
 2. Open `index.html` in any browser.
 3. Start sweating.
